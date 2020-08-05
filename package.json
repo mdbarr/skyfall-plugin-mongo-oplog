@@ -1,5 +1,5 @@
 {
-  "name": "@mdbarr/skyfall-plugin-mongo-oplog",
+  "name": "@hyperingenuity/skyfall-plugin-mongo-oplog",
   "version": "0.1.0",
   "description": "Skyfall Plugin for Mongo Oplog Events",
   "main": "index.js",
