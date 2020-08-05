@@ -6,7 +6,7 @@ const MongoClient = require('mongodb').MongoClient;
 const events = {
   i: 'insert',
   u: 'update',
-  d: 'delete'
+  d: 'delete',
 };
 
 function MongoOplog (skyfall, options) {
@@ -23,48 +23,42 @@ function MongoOplog (skyfall, options) {
     skyfall.event.emit({
       type: 'mongo:oplog:connecting',
       data: { url: this.url },
-      source: this.id
+      source: this.id,
     });
 
-    return setTimeout(() => {
-      return async.until((test) => {
-        this.client = new MongoClient(this.url, {
-          useNewUrlParser: true,
-          useUnifiedTopology: true
-        });
-
-        return this.client.connect((error) => {
-          if (error) {
-            return test(null, false);
-          }
-          return test(null, true);
-        });
-      }, (next) => {
-        return setTimeout(() => {
-          return next(null);
-        }, this.retry || 5000);
-      }, (error) => {
-        if (error) {
-          return skyfall.event.emit({
-            type: 'mongo:oplog:error',
-            data: error,
-            source: this.id
-          });
-        }
-
-        this.db = this.client.db();
-
-        this.oplog = this.db.collection(this.collection);
-
-        this.tail();
-
-        return skyfall.event.emit({
-          type: 'mongo:oplog:tailing',
-          data: { url: this.url },
-          source: this.id
-        });
+    return setTimeout(() => async.until((test) => {
+      this.client = new MongoClient(this.url, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
       });
-    }, this.slowStart);
+
+      return this.client.connect((error) => {
+        if (error) {
+          return test(null, false);
+        }
+        return test(null, true);
+      });
+    }, (next) => setTimeout(() => next(null), this.retry || 5000), (error) => {
+      if (error) {
+        return skyfall.event.emit({
+          type: 'mongo:oplog:error',
+          data: error,
+          source: this.id,
+        });
+      }
+
+      this.db = this.client.db();
+
+      this.oplog = this.db.collection(this.collection);
+
+      this.tail();
+
+      return skyfall.event.emit({
+        type: 'mongo:oplog:tailing',
+        data: { url: this.url },
+        source: this.id,
+      });
+    }), this.slowStart);
   };
 
   this.tail = () => {
@@ -72,7 +66,7 @@ function MongoOplog (skyfall, options) {
       awaitdata: true,
       noCursorTimeout: true,
       numberOfRetries: Number.MAX_VALUE,
-      tailable: true
+      tailable: true,
     }).
       stream();
 
@@ -80,7 +74,7 @@ function MongoOplog (skyfall, options) {
       skyfall.events.emit({
         type: 'mongo:oplog:op',
         data: document,
-        id: this.id
+        id: this.id,
       });
 
       const type = events[document.op];
@@ -88,14 +82,14 @@ function MongoOplog (skyfall, options) {
         skyfall.events.emit({
           type: `mongo:oplog:${ type }`,
           data: document,
-          source: this.id
+          source: this.id,
         });
 
         if (document.ns) {
           skyfall.events.emit({
             type: `oplog:${ document.ns }:${ type }`,
             data: document.o,
-            source: this.id
+            source: this.id,
           });
         }
       }
@@ -115,5 +109,5 @@ module.exports = {
   name: 'mongo-oplog',
   install: (skyfall, options) => {
     skyfall.mongoOplog = new MongoOplog(skyfall, options);
-  }
+  },
 };
